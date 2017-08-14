@@ -253,7 +253,8 @@ class Wechat extends WechatCore {
         debug(err)
         this.emit('error', err)
       })
-      this.sendMsg(this._getPollingMessage(), this._getPollingTarget())
+      // 禁止频繁的发心跳到文件助手
+      // this.sendMsg(this._getPollingMessage(), this._getPollingTarget())
       .catch(err => {
         debug(err)
         this.emit('error', err)

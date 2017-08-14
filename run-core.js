@@ -56,115 +56,10 @@ bot.on('logout', () => {
   fs.unlinkSync('./sync-data.json')
 })
 /**
- * 联系人更新事件，参数为被更新的联系人列表
- */
-bot.on('contacts-updated', contacts => {
-  console.log(contacts)
-  console.log('联系人数量：', Object.keys(bot.contacts).length)
-})
-/**
  * 错误事件，参数一般为Error对象
  */
 bot.on('error', err => {
   console.error('错误：', err)
-})
-/**
- * 如何发送消息
- */
-bot.on('login', () => {
-  /**
-   * 演示发送消息到文件传输助手
-   * 通常回复消息时可以用 msg.FromUserName
-   */
-  let ToUserName = 'filehelper'
-
-  /**
-   * 发送文本消息，可以包含emoji(😒)和QQ表情([坏笑])
-   */
-  bot.sendMsg('发送文本消息，可以包含emoji(😒)和QQ表情([坏笑])', ToUserName)
-    .catch(err => {
-      bot.emit('error', err)
-    })
-
-  /**
-   * 通过表情MD5发送表情
-   */
-  bot.sendMsg({
-    emoticonMd5: '00c801cdf69127550d93ca52c3f853ff'
-  }, ToUserName)
-    .catch(err => {
-      bot.emit('error', err)
-    })
-
-  /**
-   * 以下通过上传文件发送图片，视频，附件等
-   * 通用方法为入下
-   * file为多种类型
-   * filename必填，主要为了判断文件类型
-   */
-  // bot.sendMsg({
-  //   file: Stream || Buffer || ArrayBuffer || File || Blob,
-  //   filename: 'bot-qrcode.jpg'
-  // }, ToUserName)
-  //   .catch(err => {
-  //     bot.emit('error',err)
-  //   })
-
-  /**
-   * 发送图片
-   */
-  bot.sendMsg({
-    file: request('https://raw.githubusercontent.com/nodeWechat/wechat4u/master/bot-qrcode.jpg'),
-    filename: 'bot-qrcode.jpg'
-  }, ToUserName)
-    .catch(err => {
-      bot.emit('error', err)
-    })
-
-  /**
-   * 发送表情
-   */
-  bot.sendMsg({
-    file: fs.createReadStream('./media/test.gif'),
-    filename: 'test.gif'
-  }, ToUserName)
-    .catch(err => {
-      bot.emit('error', err)
-    })
-
-  /**
-   * 发送视频
-   */
-  bot.sendMsg({
-    file: fs.createReadStream('./media/test.mp4'),
-    filename: 'test.mp4'
-  }, ToUserName)
-    .catch(err => {
-      bot.emit('error', err)
-    })
-
-  /**
-   * 发送文件
-   */
-  bot.sendMsg({
-    file: fs.createReadStream('./media/test.txt'),
-    filename: 'test.txt'
-  }, ToUserName)
-    .catch(err => {
-      bot.emit('error', err)
-    })
-
-  /**
-   * 发送撤回消息请求
-   */
-  bot.sendMsg('测试撤回', ToUserName)
-     .then(res => {
-       // 需要取得待撤回消息的MsgID
-       return bot.revokeMsg(res.MsgID, ToUserName)
-     })
-     .catch(err => {
-       console.log(err)
-     })
 })
 /**
  * 如何处理会话消息
@@ -186,129 +81,141 @@ bot.on('message', msg => {
       /**
        * 文本消息
        */
-      console.log(msg.Content)
-      break
-    case bot.CONF.MSGTYPE_IMAGE:
-      /**
-       * 图片消息
-       */
-      console.log('图片消息，保存到本地')
-      bot.getMsgImg(msg.MsgId).then(res => {
-        fs.writeFileSync(`./media/${msg.MsgId}.jpg`, res.data)
-      }).catch(err => {
-        bot.emit('error', err)
-      })
-      break
-    case bot.CONF.MSGTYPE_VOICE:
-      /**
-       * 语音消息
-       */
-      console.log('语音消息，保存到本地')
-      bot.getVoice(msg.MsgId).then(res => {
-        fs.writeFileSync(`./media/${msg.MsgId}.mp3`, res.data)
-      }).catch(err => {
-        bot.emit('error', err)
-      })
-      break
-    case bot.CONF.MSGTYPE_EMOTICON:
-      /**
-       * 表情消息
-       */
-      console.log('表情消息，保存到本地')
-      bot.getMsgImg(msg.MsgId).then(res => {
-        fs.writeFileSync(`./media/${msg.MsgId}.gif`, res.data)
-      }).catch(err => {
-        bot.emit('error', err)
-      })
-      break
-    case bot.CONF.MSGTYPE_VIDEO:
-    case bot.CONF.MSGTYPE_MICROVIDEO:
-      /**
-       * 视频消息
-       */
-      console.log('视频消息，保存到本地')
-      bot.getVideo(msg.MsgId).then(res => {
-        fs.writeFileSync(`./media/${msg.MsgId}.mp4`, res.data)
-      }).catch(err => {
-        bot.emit('error', err)
-      })
-      break
-    case bot.CONF.MSGTYPE_APP:
-      if (msg.AppMsgType == 6) {
-        /**
-         * 文件消息
-         */
-        console.log('文件消息，保存到本地')
-        bot.getDoc(msg.FromUserName, msg.MediaId, msg.FileName).then(res => {
-          fs.writeFileSync(`./media/${msg.FileName}`, res.data)
-          console.log(res.type);
-        }).catch(err => {
-          bot.emit('error', err)
+      console.dir('=============================文本信息=============================')
+      const {Content, OriginalContent} = msg
+      const index = Content.indexOf('@AI')
+      if ( index !== -1) {
+        const ToUserName = msg.FromUserName
+        const reg = /^@\w+/
+        let SendBackMsg, originalUserName, SendToUser
+        SendToUser = OriginalContent.match(reg)
+        const ReveiceUser = bot.contacts[SendToUser]
+        let city = '深圳'
+        // @机器人的人是否是好友
+        if (ReveiceUser) {
+          originalUserName = ReveiceUser.getDisplayName()
+          SendBackMsg = `@${originalUserName} `
+          city = ReveiceUser.city ? ReveiceUser.city : '深圳'
+        } else {
+          originalUserName = '艾特GG/MM:'
+          SendBackMsg = `@${originalUserName}`
+        }
+        const input = Content.substr(index).replace('@AI', '').trim()
+        if (!input) {
+          bot.sendMsg('艾特我，把你想说跟我说呗！', ToUserName)
+            .catch(err => {
+              bot.emit('error', err)
+            })
+          return false;
+        }
+        let data = {
+          perception: {
+            inputText: {
+              text: input
+            },
+            selfInfo: {
+              location: {
+                city
+              }
+            }
+          },
+          userInfo: {
+            apiKey: 'eb45e104b4cd4c92aa6b2e30f0e991c3',
+            userId: 1
+          }
+        }
+        bot.request({
+          method: 'POST',
+          url: 'http://openapi.tuling123.com/openapi/api/v2',
+          data: data
+        }).then(res => {
+          console.log(res.data)
+          const { results } = res.data
+          if (results) {
+            const textResult = results.find(result => {
+              console.dir(result)
+              return result.resultType == 'text'
+            })
+            SendBackMsg = SendBackMsg + textResult.values.text
+            bot.sendMsg(SendBackMsg, ToUserName)
+              .catch(err => {
+                bot.emit('error', err)
+              })
+          } else {
+            bot.sendMsg('不明白您说的意思', ToUserName)
+              .catch(err => {
+                bot.emit('error', err)
+              })
+          }
         })
       }
       break
+    // case bot.CONF.MSGTYPE_IMAGE:
+    //   /**
+    //    * 图片消息
+    //    */
+    //   console.log('图片消息，保存到本地')
+    //   bot.getMsgImg(msg.MsgId).then(res => {
+    //     fs.writeFileSync(`./media/${msg.MsgId}.jpg`, res.data)
+    //   }).catch(err => {
+    //     bot.emit('error', err)
+    //   })
+    //   break
+    // case bot.CONF.MSGTYPE_VOICE:
+    //   /**
+    //    * 语音消息
+    //    */
+    //   console.log('语音消息，保存到本地')
+    //   bot.getVoice(msg.MsgId).then(res => {
+    //     fs.writeFileSync(`./media/${msg.MsgId}.mp3`, res.data)
+    //   }).catch(err => {
+    //     bot.emit('error', err)
+    //   })
+    //   break
+    // case bot.CONF.MSGTYPE_EMOTICON:
+    //   /**
+    //    * 表情消息
+    //    */
+    //   console.log('表情消息，保存到本地')
+    //   bot.getMsgImg(msg.MsgId).then(res => {
+    //     fs.writeFileSync(`./media/${msg.MsgId}.gif`, res.data)
+    //   }).catch(err => {
+    //     bot.emit('error', err)
+    //   })
+    //   break
+    // case bot.CONF.MSGTYPE_VIDEO:
+    // case bot.CONF.MSGTYPE_MICROVIDEO:
+    //   /**
+    //    * 视频消息
+    //    */
+    //   console.log('视频消息，保存到本地')
+    //   bot.getVideo(msg.MsgId).then(res => {
+    //     fs.writeFileSync(`./media/${msg.MsgId}.mp4`, res.data)
+    //   }).catch(err => {
+    //     bot.emit('error', err)
+    //   })
+    //   break
+    // case bot.CONF.MSGTYPE_APP:
+    //   if (msg.AppMsgType == 6) {
+    //     /**
+    //      * 文件消息
+    //      */
+    //     console.log('文件消息，保存到本地')
+    //     bot.getDoc(msg.FromUserName, msg.MediaId, msg.FileName).then(res => {
+    //       fs.writeFileSync(`./media/${msg.FileName}`, res.data)
+    //       console.log(res.type);
+    //     }).catch(err => {
+    //       bot.emit('error', err)
+    //     })
+    //   }
+    //   break
     default:
+      if (!msg.FromUserName) return
+      const count = msg.Content.indexOf('@AI')
+      count && bot.sendMsg('别给我发我看不懂的东西，憋屈！', msg.FromUserName)
+        .catch(err => {
+          bot.emit('error', err)
+        })
       break
   }
-})
-/**
- * 如何处理红包消息
- */
-bot.on('message', msg => {
-  if (msg.MsgType == bot.CONF.MSGTYPE_SYS && /红包/.test(msg.Content)) {
-    // 若系统消息中带有‘红包’，则认为是红包消息
-    // wechat4u并不能自动收红包
-  }
-})
-/**
- * 如何处理转账消息
- */
-bot.on('message', msg => {
-  if (msg.MsgType == bot.CONF.MSGTYPE_APP && msg.AppMsgType == bot.CONF.APPMSGTYPE_TRANSFERS) {
-    // 转账
-  }
-})
-/**
- * 如何处理撤回消息
- */
-bot.on('message', msg => {
-  if (msg.MsgType == bot.CONF.MSGTYPE_RECALLED) {
-    // msg.Content是一个xml，关键信息是MsgId
-    let MsgId = msg.Content.match(/<msgid>(.*?)<\/msgid>.*?<replacemsg><!\[CDATA\[(.*?)\]\]><\/replacemsg>/)[0]
-    // 得到MsgId后，根据MsgId，从收到过的消息中查找被撤回的消息
-  }
-})
-/**
- * 如何处理好友请求消息
- */
-bot.on('message', msg => {
-  if (msg.MsgType == bot.CONF.MSGTYPE_VERIFYMSG) {
-    bot.verifyUser(msg.RecommendInfo.UserName, msg.RecommendInfo.Ticket)
-      .then(res => {
-        console.log(`通过了 ${bot.Contact.getDisplayName(msg.RecommendInfo)} 好友请求`)
-      })
-      .catch(err => {
-        bot.emit('error', err)
-      })
-  }
-})
-/**
- * 如何直接转发消息
- */
-bot.on('message', msg => {
-  // 不是所有消息都可以直接转发
-  bot.forwardMsg(msg, 'filehelper')
-    .catch(err => {
-      bot.emit('error', err)
-    })
-})
-/**
- * 如何获取联系人头像
- */
-bot.on('message', msg => {
-  bot.getHeadImg(bot.contacts[msg.FromUserName].HeadImgUrl).then(res => {
-    fs.writeFileSync(`./media/${msg.FromUserName}.jpg`, res.data)
-  }).catch(err => {
-    bot.emit('error', err)
-  })
 })
